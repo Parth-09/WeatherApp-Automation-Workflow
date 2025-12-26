@@ -1,42 +1,31 @@
 # WeatherApp-Automation-Workflow
 # 🌤️ Daily Weather Automation with n8n
 
-An automated weather monitoring system that fetches daily weather data for multiple cities, analyzes conditions, stores historical data in Supabase, and delivers a beautiful consolidated email digest.
+An automated weather monitoring system that fetches daily weather data for multiple cities, generates intelligent alerts, stores historical data, and delivers beautiful email digests.
 
 ## ✨ Features
 
-- ✅ Multi-city weather monitoring (5 cities by default)
-- ✅ Intelligent weather alerts (precipitation, heat, frost, wind)
-- ✅ Data persistence in Supabase database
-- ✅ Beautiful HTML email digest with all cities
-- ✅ Automatic daily scheduling
-- ✅ Error handling with retry logic
+- 🌍 Multi-city monitoring (London, New York, Tokyo, Sydney, Paris)
+- ⚠️ Smart weather alerts (precipitation, heat, frost, wind)
+- 📊 Historical data storage in Supabase
+- 📧 Beautiful HTML email digest
+- 🔄 Automated daily execution
 
-## 🛠️ Tech Stack
-
-- **n8n** - Workflow automation
-- **OpenWeatherMap API** - Weather data
-- **Supabase** - PostgreSQL database
-- **Email (SMTP)** - Notification delivery
-
-## 📋 Prerequisites
-
-- n8n account (cloud or self-hosted)
-- OpenWeatherMap API key
-- Supabase account
-- Email service (Gmail/SMTP)
-
-## 🚀 Setup Instructions
+## 🛠️ Setup Instructions
 
 ### 1. OpenWeatherMap API
 
-1. Sign up at [openweathermap.org](https://openweathermap.org/api)
+1. Sign up at [OpenWeatherMap](https://openweathermap.org/api)
 2. Get your API key from the dashboard
-3. Copy the key for workflow configuration
+3. Add the key to the "Loop Through 5 Cities" node in the workflow
 
 ### 2. Supabase Database
 
-Create a new Supabase project and run this SQL:
+**Create Project:**
+- Sign up at [Supabase](https://supabase.com)
+- Create a new project
+
+**Run this SQL in Supabase SQL Editor:**
 ```sql
 CREATE TABLE weather_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -55,117 +44,131 @@ CREATE INDEX idx_weather_logs_run_at ON weather_logs(run_at DESC);
 CREATE INDEX idx_weather_logs_city ON weather_logs(city);
 ```
 
-Get your project URL and API key from Settings > API.
+**Get Credentials:**
+- Go to Settings > API
+- Copy your Project URL and anon/public key
+- Add these to the "Append to Supabase" node
 
 ### 3. Email Configuration
 
-**For Gmail:**
-- Enable 2FA in your Google account
-- Generate an App Password
-- Use `smtp.gmail.com`, port `465` (SSL)
+**Using Gmail:**
+1. Enable 2-Factor Authentication
+2. Generate an App Password (Google Account > Security > App Passwords)
+3. Configure in "Send Email" node:
+   - SMTP: `smtp.gmail.com`
+   - Port: `465` (SSL) or `587` (TLS)
+   - Username: Your Gmail address
+   - Password: App Password
+
+**Using Other SMTP:**
+- Configure your SMTP provider details in the "Send Email" node
 
 ### 4. Import Workflow
 
-1. Download `weather_automation.json` from this repo
-2. In n8n, click **Import from File**
-3. Configure credentials:
-   - OpenWeatherMap API key
-   - Supabase URL and anon key
-   - Email SMTP credentials
+1. Download `weather_automation.json` from this repository
+2. Open n8n (cloud or self-hosted)
+3. Click "Import from File"
+4. Select the downloaded file
+5. Update credentials in these nodes:
+   - Loop Through 5 Cities (OpenWeather API key)
+   - Append to Supabase (Supabase URL and key)
+   - Send Email (SMTP credentials)
 
-### 5. Customize Cities
+### 5. Configure Schedule
 
-Edit the "Loop Through 5 Cities" node to add/remove cities:
+- Default: Runs daily at 8:00 AM
+- To change: Edit the "Schedule Trigger" node
+- For testing: Set to run every 5 minutes (`*/5 * * * *`)
+
+## 🎯 Workflow Overview
+```
+Schedule → Config → Fetch Weather → Extract Data → Save to DB → Aggregate → Send Email
+```
+
+1. **Schedule Trigger** - Runs daily at set time
+2. **Loop Through 5 Cities** - Defines cities and configuration
+3. **Fetch Weather** - Calls OpenWeatherMap API (5x)
+4. **Extract City Info** - Parses and analyzes data (5x)
+5. **Append to Supabase** - Stores in database (5x)
+6. **Aggregate All Cities** - Combines into single digest
+7. **Send Email** - Delivers formatted report
+
+## ⚙️ Configuration
+
+**Add/Remove Cities:**
+
+Edit the `cities` array in "Loop Through 5 Cities" node:
 ```javascript
 const cities = [
   { name: 'London', country: 'GB' },
-  { name: 'New York', country: 'US' },
-  { name: 'Tokyo', country: 'JP' },
-  { name: 'Sydney', country: 'AU' },
-  { name: 'Paris', country: 'FR' }
+  { name: 'Your City', country: 'CODE' },
+  // Add more cities here
 ];
 ```
 
-### 6. Set Schedule
+**Alert Thresholds:**
 
-Default: Daily at 8:00 AM  
-Cron: `0 8 * * *`
-
-For testing, use: `*/5 * * * *` (every 5 minutes)
-
-## 📊 Workflow Structure
-```
-Schedule Trigger
-    ↓
-Loop Through 5 Cities (outputs 5 items)
-    ↓
-Fetch Weather from API (loops 5x)
-    ↓
-Extract & Analyze Data (loops 5x)
-    ↓
-Save to Supabase (loops 5x)
-    ↓
-Aggregate All Cities (combines to 1 item)
-    ↓
-Send Email Digest (1 email with all cities)
+Modify in the `config` object (in Fahrenheit):
+```javascript
+heatThreshold: 90,   // °F
+frostThreshold: 32   // °F
 ```
 
-## 🎯 Alert Rules
+**Change Units:**
 
-- **Precipitation:** Rain, snow, drizzle, storm, thunder
-- **Heat:** Temperature > 90°F (32°C if using metric)
-- **Frost:** Temperature < 32°F (0°C if using metric)
-- **Wind:** Wind speed > 30 mph (50 km/h if using metric)
+To use Celsius instead of Fahrenheit:
+- Change `units: 'imperial'` to `units: 'metric'`
+- Update thresholds: `heatThreshold: 32` (°C), `frostThreshold: 0` (°C)
 
-## 🔧 Configuration
+## 📊 Database Schema
 
-**Units:** Set in "Loop Through 5 Cities" node
-- `units: 'imperial'` for Fahrenheit/mph
-- `units: 'metric'` for Celsius/km/h
+The workflow stores weather data with these fields:
+- City, temperature, condition, humidity, wind speed
+- Alert type and timestamp
+- Raw API response for debugging
 
-**Email Recipient:** Set in "Send Email" node
+## 🚀 Testing
 
-**Schedule:** Set in "Schedule Trigger" node
+1. Set Schedule Trigger to manual or frequent interval
+2. Execute workflow
+3. Check email inbox for digest
+4. Verify Supabase table has 5 new rows (one per city)
 
-## 📸 Screenshots
+## 📧 Email Output
 
-![Workflow Overview](workflow_screenshot.png)
+The digest includes:
+- Header with date and alert count
+- Individual cards for each city showing:
+  - Temperature and feels-like
+  - Weather condition
+  - Humidity and wind speed
+  - Sunrise/sunset times
+  - Color-coded alerts when applicable
 
-## 🐛 Troubleshooting
+## 🔧 Troubleshooting
+
+**No email received:**
+- Check SMTP credentials in Send Email node
+- Verify email isn't in spam folder
 
 **Only 1 city showing:**
-- Check "Extract City Info" mode is "Run Once for Each Item"
-- Verify each node shows 5 items output (except Aggregate)
+- Verify "Extract City Info" is set to "Run Once for Each Item"
+- Check that "Loop Through 5 Cities" outputs 5 items
 
 **Country showing "undefined":**
-- Ensure cities include country codes in config
-- Check OpenWeatherMap API response includes `sys.country`
+- Ensure cities array includes country codes
+- Verify API response contains `sys.country`
 
-**Alerts not working:**
-- Verify temperature thresholds match your units (F vs C)
-- Check alert conditions in "Extract City Info" node
-
-**Email not sending:**
-- Verify SMTP credentials
-- Check firewall/port settings
-- Ensure recipient email is valid
+**Database errors:**
+- Check Supabase key has write permissions
+- Verify table schema matches the SQL above
 
 ## 📝 License
 
-MIT
+MIT License - Feel free to modify and use for your own projects.
 
-## 🤝 Contributing
+## 🙏 Acknowledgments
 
-Feel free to submit issues and pull requests!
-
-## 💡 Future Enhancements
-
-- 5-day weather forecast
-- SMS notifications via Twilio
-- Weather trend analysis
-- Custom alert thresholds per city
-- Dashboard visualization
-
----
-
-Built with ❤️ using n8n workflow automation
+- Weather data provided by [OpenWeatherMap](https://openweathermap.org)
+- Database hosting by [Supabase](https://supabase.com)
+- Workflow automation by [n8n](https://n8n.io)
