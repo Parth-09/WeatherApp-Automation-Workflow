@@ -18,12 +18,12 @@
         0,
         0
       ],
-      "id": "0e0ae4bb-beaa-4ef1-b918-4dfb03d7bdc5",
+      "id": "27fad7f4-e256-42c2-bb77-aac38175f3ce",
       "name": "Schedule Trigger"
     },
     {
       "parameters": {
-        "fromEmail": "YOUR_SENDER_EMAIL",
+        "fromEmail": "YOUR_EMAIL",
         "toEmail": "YOUR_RECIPIENT_EMAIL",
         "subject": "={{ $json.subject }}",
         "html": "={{ $json.htmlBody }}",
@@ -35,7 +35,7 @@
         1360,
         0
       ],
-      "id": "be0203aa-e79f-4f3f-af5d-e5da3a5562bb",
+      "id": "81a045b2-cd67-4c65-8e78-bc913e085d3d",
       "name": "Send email",
       "webhookId": "44b58649-275a-48d1-922d-0d9a501f7aa2",
       "credentials": {
@@ -55,12 +55,12 @@
         1120,
         0
       ],
-      "id": "a7c46270-9acd-41f4-94cb-c44c426b60ea",
+      "id": "61d56ee5-296b-4b08-b47a-e59b548f9857",
       "name": "Aggregate All Cities"
     },
     {
       "parameters": {
-        "jsCode": "// Define your cities to monitor (with country codes)\nconst cities = [\n  { name: 'London', country: 'GB' },\n  { name: 'New York', country: 'US' },\n  { name: 'Tokyo', country: 'JP' },\n  { name: 'Sydney', country: 'AU' },\n  { name: 'Paris', country: 'FR' }\n];\n\n// Configuration\nconst config = {\n  apiKey: 'YOUR_API_KEY',\n  units: 'imperial',  // ← You're using imperial\n  tempSymbol: '°F',   // ← Should be °F\n  heatThreshold: 90,  // ← Changed from 32°C to 90°F\n  frostThreshold: 32  // ← Changed from 0°C to 32°F\n};\n\n// Return one item per city (n8n will loop through them)\nreturn cities.map(city => ({\n  json: {\n    city: city.name,\n    countryCode: city.country,\n    apiKey: config.apiKey,\n    units: config.units,\n    tempSymbol: config.tempSymbol,\n    heatThreshold: config.heatThreshold,\n    frostThreshold: config.frostThreshold\n  }\n}));"
+        "jsCode": "// Define your cities to monitor (with country codes)\nconst cities = [\n  { name: 'London', country: 'GB' },\n  { name: 'New York', country: 'US' },\n  { name: 'Tokyo', country: 'JP' },\n  { name: 'Sydney', country: 'AU' },\n  { name: 'Paris', country: 'FR' }\n];\n\n// Configuration\nconst config = {\n  apiKey: 'YOUR_API_KEY_OPENWEATHERAPP',\n  units: 'imperial',  // ← You're using imperial\n  tempSymbol: '°F',   // ← Should be °F\n  heatThreshold: 90,  // ← Changed from 32°C to 90°F\n  frostThreshold: 32  // ← Changed from 0°C to 32°F\n};\n\n// Return one item per city (n8n will loop through them)\nreturn cities.map(city => ({\n  json: {\n    city: city.name,\n    countryCode: city.country,\n    apiKey: config.apiKey,\n    units: config.units,\n    tempSymbol: config.tempSymbol,\n    heatThreshold: config.heatThreshold,\n    frostThreshold: config.frostThreshold\n  }\n}));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -68,7 +68,7 @@
         208,
         0
       ],
-      "id": "2c2131e8-37c1-4baa-bbbc-0e5ff68a2238",
+      "id": "483ac5f4-334a-455b-b815-6b703c677b4f",
       "name": "Loop Through 5 cities"
     },
     {
@@ -105,7 +105,7 @@
         416,
         0
       ],
-      "id": "e8e3e6f8-b977-44f1-8761-ab590f8f98c3",
+      "id": "900cc79f-423c-4cca-9d87-668768809f2f",
       "name": "OpenWeather API Request",
       "retryOnFail": true,
       "waitBetweenTries": 2000,
@@ -114,7 +114,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Get weather data for THIS item (n8n loops automatically)\nconst weather = $input.item.json;\n\n// Extract city info\nconst city = weather.name || '';\nconst country = weather.sys?.country || $input.item.json.countryCode || '';\n\n// Extract and round weather metrics (already in Fahrenheit from API)\nconst temp = Math.round(weather.main.temp * 10) / 10;\nconst feelsLike = Math.round(weather.main.feels_like * 10) / 10;\nconst condition = weather.weather[0].description;\nconst conditionMain = weather.weather[0].main;\nconst humidity = weather.main.humidity;\nconst pressure = weather.main.pressure;\nconst windSpeed = Math.round(weather.wind.speed * 10) / 10; // Already in mph for imperial\nconst cloudiness = weather.clouds?.all || 0;\n\n// Calculate sunrise and sunset times\nconst sunrise = new Date(weather.sys.sunrise * 1000).toLocaleTimeString('en-US', { \n  hour: '2-digit', \n  minute: '2-digit',\n  hour12: true \n});\nconst sunset = new Date(weather.sys.sunset * 1000).toLocaleTimeString('en-US', { \n  hour: '2-digit', \n  minute: '2-digit',\n  hour12: true \n});\n\n// Get weather emoji\nconst getWeatherEmoji = (main, condition) => {\n  const condLower = condition.toLowerCase();\n  \n  if (condLower.includes('clear')) return '☀️';\n  if (condLower.includes('cloud')) return '☁️';\n  if (condLower.includes('rain') || condLower.includes('drizzle')) return '🌧️';\n  if (condLower.includes('snow')) return '❄️';\n  if (condLower.includes('storm') || condLower.includes('thunder')) return '⛈️';\n  if (condLower.includes('mist') || condLower.includes('fog')) return '🌫️';\n  \n  return '🌤️';\n};\n\nconst weatherEmoji = getWeatherEmoji(conditionMain, condition);\n\n// Determine alert type and message\nlet alertType = 'none';\nlet alertMessage = '';\nlet alertEmoji = '';\n\nconst conditionLower = condition.toLowerCase();\n\n// Check for precipitation\nif (conditionLower.includes('rain') || conditionLower.includes('drizzle') || \n    conditionLower.includes('storm') || conditionLower.includes('thunder') || \n    conditionLower.includes('snow')) {\n  alertType = 'precipitation';\n  alertEmoji = '⚠️';\n  alertMessage = 'Precipitation Expected - Bring an Umbrella!';\n}\n// Check for heat (Fahrenheit)\nelse if (temp > 90) {\n  alertType = 'heat';\n  alertEmoji = '🔥';\n  alertMessage = 'Heat Alert - Stay Hydrated!';\n}\n// Check for frost (Fahrenheit)\nelse if (temp < 32) {\n  alertType = 'frost';\n  alertEmoji = '❄️';\n  alertMessage = 'Frost Alert - Bundle Up!';\n}\n// Check for strong winds (mph)\nelse if (windSpeed > 30) {\n  alertType = 'wind';\n  alertEmoji = '💨';\n  alertMessage = 'Strong Wind Warning';\n}\n\n// Create formatted text summary\nconst textSummary = `${weatherEmoji} ${city}, ${country}\n━━━━━━━━━━━━━━━━━━━━\n🌡️  Temperature: ${temp}°F (Feels like ${feelsLike}°F)\n☁️  Conditions: ${condition.charAt(0).toUpperCase() + condition.slice(1)}\n💧 Humidity: ${humidity}%\n💨 Wind Speed: ${windSpeed} mph\n🌅 Sunrise: ${sunrise}\n🌇 Sunset: ${sunset}\n\n${alertMessage ? alertEmoji + ' ' + alertMessage : '✅ No Weather Alerts'}`;\n\n// Return structured data for THIS city\nreturn {\n  city: city,\n  country: country,\n  temperature: temp,\n  temperature_unit: 'F',\n  feels_like: feelsLike,\n  condition: condition,\n  condition_main: conditionMain,\n  humidity: humidity,\n  pressure: pressure,\n  wind_speed: windSpeed,\n  cloudiness: cloudiness,\n  sunrise: sunrise,\n  sunset: sunset,\n  weather_emoji: weatherEmoji,\n  alert_type: alertType,\n  alert_message: alertMessage,\n  alert_emoji: alertEmoji,\n  text_summary: textSummary,\n  raw_response: weather,\n  run_at: new Date().toISOString(),\n  run_date: new Date().toLocaleDateString('en-US', { \n    year: 'numeric', \n    month: 'long', \n    day: 'numeric' \n  })\n};"
+        "jsCode": "// Get weather data for THIS item (n8n loops automatically)\nconst weather = $input.item.json;\n\n// Extract city info\nconst city = weather.name || '';\nconst country = weather.sys?.country || $input.item.json.countryCode || '';\n\n// Extract and round weather metrics (already in Fahrenheit from API)\nconst temp = Math.round(weather.main.temp * 10) / 10;\nconst feelsLike = Math.round(weather.main.feels_like * 10) / 10;\nconst condition = weather.weather[0].description;\nconst conditionMain = weather.weather[0].main;\nconst humidity = weather.main.humidity;\nconst pressure = weather.main.pressure;\nconst windSpeed = Math.round(weather.wind.speed * 10) / 10; // Already in mph for imperial\nconst cloudiness = weather.clouds?.all || 0;\n\n// Map cities to their timezones\nconst timezoneMap = {\n  'New York': 'America/New_York',\n  'Tokyo': 'Asia/Tokyo',\n  'London': 'Europe/London',\n  'Sydney': 'Australia/Sydney',\n  'Paris': 'Europe/Paris'\n};\n\nconst cityTimezone = timezoneMap[city] || 'UTC';\n\nconst sunrise = new Date(weather.sys.sunrise * 1000).toLocaleTimeString('en-US', { \n  hour: '2-digit', \n  minute: '2-digit',\n  timeZone: cityTimezone,\n  hour12: true\n});\n\nconst sunset = new Date(weather.sys.sunset * 1000).toLocaleTimeString('en-US', { \n  hour: '2-digit', \n  minute: '2-digit',\n  timeZone: cityTimezone,\n  hour12: true\n});\n\n// Get weather emoji\nconst getWeatherEmoji = (main, condition) => {\n  const condLower = condition.toLowerCase();\n  \n  if (condLower.includes('clear')) return '☀️';\n  if (condLower.includes('cloud')) return '☁️';\n  if (condLower.includes('rain') || condLower.includes('drizzle')) return '🌧️';\n  if (condLower.includes('snow')) return '❄️';\n  if (condLower.includes('storm') || condLower.includes('thunder')) return '⛈️';\n  if (condLower.includes('mist') || condLower.includes('fog')) return '🌫️';\n  \n  return '🌤️';\n};\n\nconst weatherEmoji = getWeatherEmoji(conditionMain, condition);\n\n// Determine alert type and message\nlet alertType = 'none';\nlet alertMessage = '';\nlet alertEmoji = '';\n\nconst conditionLower = condition.toLowerCase();\n\n// Check for precipitation\nif (conditionLower.includes('rain') || conditionLower.includes('drizzle') || \n    conditionLower.includes('storm') || conditionLower.includes('thunder') || \n    conditionLower.includes('snow')) {\n  alertType = 'precipitation';\n  alertEmoji = '⚠️';\n  alertMessage = 'Precipitation Expected - Bring an Umbrella!';\n}\n// Check for heat (Fahrenheit)\nelse if (temp > 90) {\n  alertType = 'heat';\n  alertEmoji = '🔥';\n  alertMessage = 'Heat Alert - Stay Hydrated!';\n}\n// Check for frost (Fahrenheit)\nelse if (temp < 32) {\n  alertType = 'frost';\n  alertEmoji = '❄️';\n  alertMessage = 'Frost Alert - Bundle Up!';\n}\n// Check for strong winds (mph)\nelse if (windSpeed > 30) {\n  alertType = 'wind';\n  alertEmoji = '💨';\n  alertMessage = 'Strong Wind Warning';\n}\n\n// Create formatted text summary\nconst textSummary = `${weatherEmoji} ${city}, ${country}\n━━━━━━━━━━━━━━━━━━━━\n🌡️  Temperature: ${temp}°F (Feels like ${feelsLike}°F)\n☁️  Conditions: ${condition.charAt(0).toUpperCase() + condition.slice(1)}\n💧 Humidity: ${humidity}%\n💨 Wind Speed: ${windSpeed} mph\n🌅 Sunrise: ${sunrise}\n🌇 Sunset: ${sunset}\n\n${alertMessage ? alertEmoji + ' ' + alertMessage : '✅ No Weather Alerts'}`;\n\n// Return structured data for THIS city\nreturn {\n  city: city,\n  country: country,\n  temperature: temp,\n  temperature_unit: 'F',\n  feels_like: feelsLike,\n  condition: condition,\n  condition_main: conditionMain,\n  humidity: humidity,\n  pressure: pressure,\n  wind_speed: windSpeed,\n  cloudiness: cloudiness,\n  sunrise: sunrise,\n  sunset: sunset,\n  weather_emoji: weatherEmoji,\n  alert_type: alertType,\n  alert_message: alertMessage,\n  alert_emoji: alertEmoji,\n  text_summary: textSummary,\n  raw_response: weather,\n  run_at: new Date().toISOString(),\n  run_date: new Date().toLocaleDateString('en-US', { \n    year: 'numeric', \n    month: 'long', \n    day: 'numeric' \n  })\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -122,24 +122,24 @@
         656,
         0
       ],
-      "id": "bb8229de-81a2-4e7f-9ed3-29993064a066",
+      "id": "3aeb0412-6ae7-43e4-a92d-b45ca603da79",
       "name": "Extract the City Info",
       "executeOnce": false
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://PROJECT_ID.supabase.co/rest/v1/weather_logs",
+        "url": "https://{Project_ID}.supabase.co/rest/v1/weather_logs",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "YOUR_API_KEY"
+              "value": "API_KEY_SUPABASE"
             },
             {
               "name": "Authorization",
-              "value": "Bearer YOUR_API_KEY"
+              "value": "Bearer API_KEY_SUPABASE"
             },
             {
               "name": "Content-Type",
@@ -232,7 +232,7 @@
         896,
         0
       ],
-      "id": "93213829-bbf3-4000-91b6-812753ac4856",
+      "id": "f361bbd5-dd19-4750-9c23-a85791ce06cb",
       "name": "Append the data to supabase",
       "retryOnFail": true,
       "waitBetweenTries": 2000,
@@ -336,7 +336,6 @@
   },
   "versionId": "0f6593a1-6ca6-4b60-9cdf-6a2b7048e390",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "600ac28ff39fc67e32d40373ee2844adef01c53d1a8b27354e139a032ffa4092"
   },
   "id": "13f7eE1uFWngYxtE",
